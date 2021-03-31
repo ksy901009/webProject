@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="board">
+	<sql id="search">
+		<if test="search_option != null and search_data != null and search_option != '' and search_data != ''">
+			<choose>
+				<when test="search_option == 'writer' or search_option == 'subject' or search_option == 'content'">
+					and ${search_option} like #{search_data} 
+				</when>
+				<when test="search_option == 'writer_subject_content'">
+					and (writer like #{search_data} or subject like #{search_data} or content like #{search_data})
+				</when>
+			</choose>
+		</if>
+	</sql>
+	
+	<select id="getMaxNum" resultType="int">
+		select nvl(max(num), 0) from ${table_1} where 1=1
+	</select>
+	
+	<select id="getMaxRefNo" resultType="int">
+		select nvl(max(refNo), 0) from ${table_1} where 1=1
+	</select>
+	
+	<select id="getMaxNoticeNo" resultType="int">
+		select nvl(max(noticeNo), 0) from ${table_1} where tbl = #{tbl}
+	</select>
+	
+	<insert id="insertBoard">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_board.nextVal from dual
+		</selectKey>
+		
+		insert into ${table_1}
+		(no, num, tbl, writer, subject, content, email, passwd, refNo, stepNo, levelNo, parentNo, hit, ip, memberNo, noticeNo, secretGubun, regiDate)
+		values(#{no}, #{dto.num}, #{dto.tbl}, #{dto.writer}, #{dto.subject}, #{dto.content}, #{dto.email}, #{dto.passwd}, #{dto.refNo}, #{dto.stepNo},
+		 #{dto.levelNo}, #{dto.parentNo}, #{dto.hit}, #{dto.ip}, #{dto.memberNo}, #{dto.noticeNo}, #{dto.secretGubun}, sysdate)
+	</insert>
+	
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where tbl = #{tbl}
+		<include refid="search"></include>
+	</select>
+	
+	<select id="getListAll" resultType="board.model.dto.BoardDTO">
+		select * from (select A.*, Rownum Rnum from (
+		select t1.*, (select count(*) from ${table_1} t2 where t2.parentNo = t1.no) child_counter
+		from ${table_1} t1 where tbl = #{tbl} 
+		<include refid="search"></include>
+		
+		order by noticeNo desc, refNo desc, levelNo asc
+		) A) where rnum between #{startRecord} and #{lastRecord}
+	</select>
+	
+	<select id="getSelectOne" resultType="board.model.dto.BoardDTO">
+		select * from
+		(select b.*, 
+		(select count(*) from ${table_1} where refNo = b.refNo and stepNo = (b.stepNo + 1) and levelNo = (b.levelNo + 1)) child_counter, 
+		LAG(no) OVER(order by noticeNo desc, refNo desc, levelNo asc) preNo,
+		LAG(subject) OVER(order by noticeNo desc, refNo desc, levelNo asc) preSubject,
+		LEAD(no) OVER(order by noticeNo desc, refNo desc, levelNo asc) nxtNo,
+		LEAD(subject) OVER(order by noticeNo desc, refNo desc, levelNo asc) nxtSubject
+		from ${table_1} b order by noticeNo desc, refNo desc, levelNo asc
+		) where no = #{dto.no}
+	</select>
+	
+	<update id="setUpdateHit">
+		update ${table_1} set hit = (hit + 1) where no = #{dto.no}
+	</update>
+	
+	<update id="setUpdateReLevel">
+		update ${table_1} set levelNo = (levelNo + 1) where refNo = #{dto.refNo} and levelNo > #{dto.levelNo}
+	</update>
+	
+	<update id="updateBoard">
+		update ${table_1} set subject = #{dto.subject}, content = #{dto.content}, email = #{dto.email}, passwd = #{dto.passwd} where no = #{dto.no}
+	</update>
+	
+	<delete id="deleteBoard">
+		delete from ${table_1} where no = #{dto.no}
+	</delete>
+	
+	<insert id="insertBoardComment">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_board_commnet.nextVal from dual
+		</selectKey>
+		insert into ${table_2} 
+		(comment_no, board_no, writer, content, passwd, memberNo, ip, regiDate)
+		values(#{no}, #{dto.board_no}, #{dto.writer}, #{dto.content}, #{dto.passwd}, #{dto.memberNo}, #{dto.ip}, sysdate)
+	</insert>
+	
+	<select id="getTotalRecordComment" resultType="int">
+		select count(*) from ${table_2} where board_no = #{no} 
+	</select>
+	
+	<select id="getCommentListAll" resultType="comment.model.dto.BoardCommentDTO">
+		select * from (select A.*, Rownum Rnum from (
+		
+		select * from ${table_2} where board_no = #{no}
+		order by comment_no desc
+		
+		) A) where rnum between #{startRecord} and #{lastRecord}
+	</select>
+</mapper>

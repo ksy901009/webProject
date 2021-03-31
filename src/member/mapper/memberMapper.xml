@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="member">
+	<sql id="search">
+		<choose>
+			<when test="search_option == 'id_name_gender'">
+				and (id like '%' || #{search_data} || '%' or
+					name like '%' || #{search_data} || '%' or
+					gender like '%' || #{search_data} || '%')
+			</when>
+			<when test="search_option != null and search_option != '' and search_data != null and search_data != ''">
+				and (${search_option} like '%' || #{search_data} || '%')
+			</when>
+			<otherwise>
+				and no > '0'
+			</otherwise>
+		</choose>
+	</sql>
+
+	<select id="getListAll" resultType="member.model.dto.MemberDTO">
+		select * from (select b.*, rownum rnum from (
+		select * from member where 1=1
+		
+		<include refid="search"></include>
+		
+		order by no desc
+		<![CDATA[
+			) b) where rnum between #{startRecord} and #{lastRecord}
+		]]>
+	</select>
+
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where 1=1
+		<include refid="search"></include>
+	</select>
+	
+	<select id="getSelectOne" resultType="member.model.dto.MemberDTO">
+		select * from ${table_1} where no = #{dto.no}
+	</select>
+	
+	<select id="getSelectOneSearch" resultType="member.model.dto.MemberDTO">
+		select * from
+		(select LAG(no) OVER(order by no desc) preNo,
+		LAG(id) OVER(order by no desc) preId,
+		LEAD(no) OVER(order by no desc) nxtNo,
+		LEAD(id) OVER(order by no desc) nxtId,
+		a.*
+		from ${table_1} a
+		where 1=1
+		<include refid="search"></include>
+		order by no desc)
+		where no = #{dto.no}
+	</select>
+	
+	<select id="idCheck" resultType="int">
+		select count(*) from ${table_1} where id = #{id}
+	</select>
+	
+	<select id="idCheckResultString" resultType="String">
+		select id from ${table_1} where id = #{dto.id}
+	</select>
+	
+	<insert id="insertMember">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_member.nextVal from dual
+		</selectKey>
+		insert into ${table_1}(no, id, passwd, name, gender, bornYear, postCode, address, detailAddress, extraAddress, regiDate)
+		values
+		(#{no}, #{dto.id}, #{dto.passwd}, #{dto.name}, #{dto.gender}, #{dto.bornYear}, #{dto.postCode}, #{dto.address}, #{dto.detailAddress}, #{dto.extraAddress}, current_timestamp)
+	</insert>
+	
+	<update id="updateMember">
+		update ${table_1} set
+		passwd = #{dto.passwd}, gender = #{dto.gender}, bornYear = #{dto.bornYear},
+		postcode = #{dto.postCode}, address = #{dto.address}, detailAddress = #{dto.detailAddress}, extraAddress = #{dto.extraAddress} where no = #{dto.no}
+	</update>
+	
+	<delete id="deleteMember">
+		delete from ${table_1} where no = #{dto.no}
+	</delete>
+	
+	<select id="pwdCheck" resultType="String">
+		select passwd from ${table_1} where no = #{dto.no}
+	</select>
+	
+	<select id="login" resultType="member.model.dto.MemberDTO">
+		select no, id, name, passwd from ${table_1} where id = #{dto.id}
+	</select>
+</mapper>
