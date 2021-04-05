@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="surveyAnswer">
+	<sql id="search">
+		<choose>
+			<when test="list_gubun == 'ing'">
+				and current_timestamp between start_date and last_date 
+			</when>
+			<when test="list_gubun == 'end'">
+				and current_timestamp > last_date 
+			</when>
+		</choose>
+		<if test="search_option.length() > 0 and search_data.length() > 0">
+			and #{search_option} like '%' || #{search_data} || '%' 
+		</if>
+		<if test="search_date_check == '0' and search_date_s.length() > 0 and search_date_e.length() > 0">
+			<![CDATA[
+				and (start_date >= to_timestamp(#{search_date_s}) and last_date <= to_timestamp(#{search_date_e}))
+			]]>
+		</if>
+	</sql>
+
+	<select id="getListAll" resultType="survey.model.dto.SurveyDTO">
+		select * from (select b.*, rownum rnum from (
+		select * from ${table_1} where 1=1 
+		<include refid="search"></include>
+		
+		order by no desc
+		<![CDATA[
+			) b) where rnum between #{startRecord} and #{lastRecord}
+		]]>
+	</select>
+
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where 1=1 
+		<include refid="search"></include>
+	</select>
+	
+	<insert id="insertSurveyAnswer">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_survey_answer.nextVal from dual
+		</selectKey>
+		insert into ${table_2}(answer_no, no, answer, regi_date)
+		values(#{no}, #{dto.no}, #{dto.answer}, current_timestamp)
+	</insert>
+</mapper>

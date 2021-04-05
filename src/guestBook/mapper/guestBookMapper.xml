@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="guestBook">
+	<sql id="search">
+		<choose>
+			<when test="search_option == 'name_email'">
+				and (name like '%' || #{search_data} || '%' or
+					email like '%' || #{search_data} || '%')
+			</when>
+			<when test="search_option != null and search_option != '' and search_data != null and search_data != ''">
+				and (${search_option} like '%' || #{search_data} || '%')
+			</when>
+			<otherwise>
+				and no > '0'
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<insert id="insertGuestBook">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_guestBook.nextVal from dual
+		</selectKey>
+		insert into ${table_1}
+		(no, name, email, passwd, content, regi_date)
+		values
+		(#{no}, #{dto.name}, #{dto.email}, #{dto.passwd}, #{dto.content}, sysdate)
+	</insert>
+	
+	<select id="getListAll" resultType="guestBook.model.dto.GuestBookDTO">
+		select * from (
+		select b.*, rownum rnum from
+		(select * from ${table_1} where 1=1
+		<include refid="search"></include>
+		order by no desc
+		) b) where rnum between #{startRecord} and #{lastRecord}
+	</select>
+	
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where 1=1
+		<include refid="search"></include>
+	</select>
+	
+	<select id="getSelectOne" resultType="guestBook.model.dto.GuestBookDTO">
+		select * from ${table_1} where no = #{dto.no} 
+	</select>
+	
+	<update id="updateGuestBook">
+		update ${table_1} set
+		name = #{dto.name}, email = #{dto.email}, passwd = #{dto.passwd}, content = #{dto.content}
+		where no = #{dto.no}
+	</update>
+	
+	<delete id="deleteGuestBook">
+		delete from ${table_1} where no = #{dto.no}
+	</delete>
+	
+	<select id="getDbPwd" resultType="String">
+		select passwd from ${table_1} where no = #{dto.no} 
+	</select>
+</mapper>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cart">
+	<sql id="search">
+		<if test="search_option != null and search_data != null and search_option != '' and search_data != ''">
+			<choose>
+				<when test="search_option == 'name' or search_option == 'description'">
+					and ${search_option} like #{search_data} 
+				</when>
+				<when test="search_option == 'name_description'">
+					and (name like #{search_data} or description like #{search_data})
+				</when>
+			</choose>
+		</if>
+	</sql>
+	
+	<insert id="insertCart">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_cart.nextVal from dual
+		</selectKey>
+		insert into ${table_1}
+		(no, memberNo, productNo, amount, regi_date)
+		values(#{no}, #{dto.memberNo}, #{dto.productNo}, #{dto.amount}, current_timestamp)
+	</insert>
+	
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where 1 = 1
+		<include refid="search"></include>
+	</select>
+	
+	<select id="getListAll" resultType="shop.model.dto.CartDTO">
+		select * from (select A.*, p.product_img, p.price product_price, p.name product_name, (p.price * A.amount) buy_money, Rownum Rnum from (
+		
+		select * from ${table_1} where 1 = 1
+		<include refid="search"></include>
+		order by no desc 
+		
+		) A, product p where A.productNo = p.no)
+		where rnum between #{startRecord} and #{lastRecord}
+	</select>
+	
+	<select id="getSelectOne" resultType="shop.model.dto.ProductDTO">
+		select * from ${table_1} where no = #{dto.no} 
+	</select>
+	
+	<update id="updateBoard">
+		update ${table_1} set subject = #{dto.subject}, content = #{dto.content}, email = #{dto.email}, passwd = #{dto.passwd} where no = #{dto.no}
+	</update>
+	
+	<delete id="deleteCart" parameterType="map">
+		delete from ${table_1} where no in(
+			<foreach collection="array" index="index" item="item" open="" close="" separator=",">
+				#{item}
+			</foreach>
+		)
+	</delete>
+	
+	<update id="updateCartAmount">
+		update ${table_1} set amount = #{dto.amount} where no = #{dto.no}
+	</update>
+	
+	<select id="getListCartProductGroup" resultType="shop.model.dto.CartDTO">
+		select p.name product_name, sum(c.amount * p.price) buy_money
+		from ${table_1} c inner join product p on c.productNo = p.no
+		group by p.name
+		order by product_name asc
+	</select>
+	
+</mapper>

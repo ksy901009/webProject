@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="memo">
+	<insert id="insertMemo">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_memo.nextVal from dual
+		</selectKey>
+		insert into ${table_1}
+		(no, writer, content, regiDate, memberNo)
+		values
+		(#{no}, #{dto.writer}, #{dto.content}, current_timestamp, #{dto.memberNo})
+	</insert>
+	
+	<select id="getListAll" resultType="memo.model.dto.MemoDTO">
+		select * from (
+		select b.*, rownum rnum from
+		(select * from ${table_1} where memberNo = #{dto.memberNo} order by no desc) b
+		) where rnum between #{startRecord} and #{lastRecord}
+	</select>
+	
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where memberNo = #{dto.memberNo}
+	</select>
+	
+	<update id="updateMemo">
+		update ${table_1} set
+		writer = #{dto.writer}, content = #{dto.content}, regiDate = current_timestamp
+		where no = #{dto.no}
+	</update>
+	
+	<delete id="deleteMemo">
+		delete from ${table_1} where no = #{dto.no}
+	</delete>
+</mapper>

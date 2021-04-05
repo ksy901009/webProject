@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org/DTO Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="product">
+	<sql id="search">
+		<if test="search_option != null and search_data != null and search_option != '' and search_data != ''">
+			<choose>
+				<when test="search_option == 'name' or search_option == 'description'">
+					and ${search_option} like #{search_data} 
+				</when>
+				<when test="search_option == 'name_description'">
+					and (name like #{search_data} or description like #{search_data})
+				</when>
+			</choose>
+		</if>
+	</sql>
+		
+	<insert id="insertProduct">
+		<selectKey keyProperty="no" resultType="int" order="BEFORE">
+			select seq_product.nextVal from dual
+		</selectKey>
+		insert into ${table_1} 
+		(no, name, price, description, product_img, regi_date)
+		values
+		(#{no}, #{dto.name}, #{dto.price}, #{dto.description}, #{dto.product_img}, current_timestamp)
+	</insert>
+	
+	<select id="getTotalRecord" resultType="int">
+		select count(*) from ${table_1} where 1 = 1
+		<include refid="search"></include>
+	</select>
+	
+	<select id="getListAll" resultType="shop.model.dto.ProductDTO">
+		select * from 
+		(
+		select A.*,
+		(select sum(amount)	from cart where productNo = a.no) cart_counter, Rownum Rnum from 
+		(
+		select * from ${table_1} where 1 = 1
+		<include refid="search"></include>
+		
+		order by no desc
+		)
+		A)
+		where rnum between #{startRecord} and #{lastRecord}
+	</select>
+	
+	<select id="getSelectOne" resultType="shop.model.dto.ProductDTO">
+		select a.*, (select sum(amount)	from cart where productNo = a.no) cart_counter from ${table_1} a where no = #{dto.no} 
+	</select>
+	
+	<update id="updateProduct">
+		update ${table_1} set name = #{dto.name}, price = #{dto.price}, description = #{dto.description}, product_img = #{dto.product_img} where no = #{dto.no}
+	</update>
+	
+	<delete id="deleteProduct">
+		delete from ${table_1} where no = #{dto.no}
+	</delete>
+</mapper>
